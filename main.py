@@ -4,14 +4,15 @@ from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from PyPDF2 import PdfReader
 
+# Path to FAISS index storage
 DB_FAISS_PATH = "data/vector_store/faiss_index"
 
-# Embedding model (semantic search optimized)
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/multi-qa-mpnet-base-dot-v1")
+# Use LEGAL-BERT embeddings for better legal understanding
+embedding_model = HuggingFaceEmbeddings(model_name="nlpaueb/legal-bert-base-uncased")
 
 
 def load_pdf_text(pdf_path):
-    """Extract text from a PDF file."""
+    """Extract raw text from a PDF file."""
     pdf_reader = PdfReader(pdf_path)
     text = ""
     for page in pdf_reader.pages:
@@ -20,7 +21,7 @@ def load_pdf_text(pdf_path):
 
 
 def chunk_text(text, chunk_size=1000, chunk_overlap=200):
-    """Split text into chunks for embeddings."""
+    """Split text into smaller chunks for embedding."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -30,11 +31,10 @@ def chunk_text(text, chunk_size=1000, chunk_overlap=200):
 
 
 def store_in_faiss(chunks):
-    """Store text chunks in FAISS DB (append if exists)."""
-    # Load existing DB or create new one
+    """Store text chunks into FAISS index (append if exists)."""
     if os.path.exists(DB_FAISS_PATH):
         db = FAISS.load_local(DB_FAISS_PATH, embedding_model, allow_dangerous_deserialization=True)
-        db.add_texts(chunks)  # append new chunks
+        db.add_texts(chunks)
     else:
         db = FAISS.from_texts(chunks, embedding_model)
 
@@ -43,9 +43,9 @@ def store_in_faiss(chunks):
 
 
 def search_query(query, top_k=3):
-    """Search in FAISS DB for relevant chunks."""
+    """Search FAISS DB for most relevant text chunks."""
     if not os.path.exists(DB_FAISS_PATH):
-        print("⚠️ No FAISS index found. Upload PDFs first!")
+        print("⚠️ No FAISS index found. Please upload PDFs first!")
         return []
 
     db = FAISS.load_local(DB_FAISS_PATH, embedding_model, allow_dangerous_deserialization=True)
@@ -53,7 +53,7 @@ def search_query(query, top_k=3):
 
     print(f"\n🔎 Top {top_k} results for query: {query}\n")
     for i, res in enumerate(results, 1):
-        print(f"{i}. {res.page_content[:300]}...\n")  # preview first 300 chars
+        print(f"{i}. {res.page_content[:300]}...\n")
 
     return results
 
@@ -73,7 +73,7 @@ def main():
                 chunks = chunk_text(text)
                 store_in_faiss(chunks)
             else:
-                print("⚠️ File not found.")
+                print("❌ File not found.")
 
         elif choice == "2":
             query = input("Enter your legal question: ").strip()
