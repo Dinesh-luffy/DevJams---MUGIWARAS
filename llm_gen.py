@@ -15,26 +15,29 @@ def generate_answer(query, context=""):
     Returns:
         str: Model's response.
     """
-    prompt = f"""
-You are a helpful legal assistant. A lawyer asked: "{query}"
+    if context:
+        prompt = f"""
+You are a helpful legal assistant. Your task is to provide an answer based ONLY on the provided legal context.
+If the information is not present in the context, state that you cannot find a relevant answer.
 
 Relevant context from legal documents:
 {context}
 
-Answer concisely, suggest legal statutes, precedents, or arguments if possible.
+A lawyer asked: "{query}"
+
+Answer concisely, citing legal statutes, precedents, or arguments from the provided context if possible.
+"""
+    else:
+        prompt = f"""
+You are a helpful legal assistant for the Indian legal system. When asked about a number, prioritize its meaning as a legal section (e.g., Indian Penal Code) over any other meaning.
+
+A lawyer asked a general legal question: "{query}"
+
+Answer the question concisely based on your general knowledge.
 """
     try:
-        # The ollama client.generate() method does not accept a max_tokens parameter.
-        # It's automatically handled by the model.
-        # This line is correct as written in the user's provided code.
         response = client.generate(model="llama2", prompt=prompt)
-        
-        # Accessing the response content correctly
-        # The user's provided code for this part is also slightly off. 
-        # The ollama response is a simple dictionary, not an object with a .content attribute.
-        # A simple response would be a dictionary like {'model': 'llama2', 'created_at': '...', 'response': '...'}
-        
-        answer_text = response['response']
+        answer_text = response.get('response', '') 
         return answer_text.strip()
 
     except Exception as e:
